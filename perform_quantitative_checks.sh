@@ -21,7 +21,7 @@ create_tables() {
 }
 
 dump_tables() {
-    pg_dump -U $POSTGRES_USER -t $SCHEMA.* $DB >> $OUTFILE
+    pg_dump -U $POSTGRES_USER -t $SCHEMA.* $DB > $OUTFILE
     exit 0
 }
 
@@ -44,6 +44,12 @@ if [[ -z "$DB" ]] || [[ -z "$SCHEMA" ]] || [[ -z "$POSTGRES_USER" ]]; then
     echo "Error: all parameters are required!"
     usage
 fi
+# These are the counts to be performed. the queries all take the following form:
+# insert into schema.counts
+# values:
+# * now() - current timestamp
+# * counttype - a string of 20 chars or less representing the type of count
+# * the count query, output must be a hstore. 
 HIGHWAY_COUNT_QUERY="insert into $SCHEMA.counts values (now(), 'highwaycount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, count(1) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));"
 HIGHWAY_LENGTH_QUERY="insert into $SCHEMA.counts values (now(), 'highwaylength', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, sum(st_length(st_transform(linestring, 3786))) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));"
 RELATION_COUNT_QUERY="insert into $SCHEMA.counts values (now(), 'relationcount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'network' t, count(1) c from relations where tags->'type' = 'route' and tags->'route' = 'road' and tags?'network' group by tags->'network') foo));"
