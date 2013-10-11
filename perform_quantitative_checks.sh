@@ -1,11 +1,15 @@
 #!/bin/bash
 
 usage() {
-    echo "usage: $0 -d database_name -s schema_name [-C|-D file]"
+    echo "usage: $0 -d database_name -s schema_name -u postgres_user [-C|-D file]"
     echo "-d the database holding the osm source data (osmosis snapshot)"
     echo "-s the schema that stores the stats"
     echo "-u the postgreSQL user"
-    echo "-c creates the stats table and schema"
+    echo "By default, the queries defined in this script are run"
+    echo "and the results stored in the table \'counts\' in the database/schema"
+    echo "defined in the parameters above."
+    echo "Optional alternative actions:"
+    echo "-C creates the stats table and schema"
     echo "-D dumps the output table to file"
     echo "Note that -C / -D must be the final option!"
     exit 0
@@ -14,7 +18,6 @@ usage() {
 create_tables() {
     SCHEMA_CREATE_QUERY="CREATE SCHEMA $SCHEMA"
     TABLE_CREATE_QUERY="CREATE TABLE $SCHEMA.counts (tstamp timestamp with time zone, counttype varchar(20), counts hstore)"
-    echo "postgres user $POSTGRES_USER"
     psql -U $POSTGRES_USER -d $DB -c "$SCHEMA_CREATE_QUERY"
     psql -U $POSTGRES_USER -d $DB -c "$TABLE_CREATE_QUERY"
     exit 0
@@ -39,11 +42,12 @@ while getopts "hd:s:u:CD:" option; do
         ;;
     esac
 done
-echo "postgres user main loop: $POSTGRES_USER"
+
 if [[ -z "$DB" ]] || [[ -z "$SCHEMA" ]] || [[ -z "$POSTGRES_USER" ]]; then
     echo "Error: all parameters are required!"
     usage
 fi
+
 # These are the counts to be performed. the queries all take the following form:
 # insert into schema.counts
 # values:
