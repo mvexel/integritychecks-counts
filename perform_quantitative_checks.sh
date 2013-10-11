@@ -50,13 +50,17 @@ fi
 # * now() - current timestamp
 # * counttype - a string of 20 chars or less representing the type of count
 # * the count query, output must be a hstore. 
-HIGHWAY_COUNT_QUERY="insert into $SCHEMA.counts values (now(), 'highwaycount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, count(1) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));"
-HIGHWAY_LENGTH_QUERY="insert into $SCHEMA.counts values (now(), 'highwaylength', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, sum(st_length(st_transform(linestring, 3786))) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));"
-RELATION_COUNT_QUERY="insert into $SCHEMA.counts values (now(), 'relationcount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'network' t, count(1) c from relations where tags->'type' = 'route' and tags->'route' = 'road' and tags?'network' group by tags->'network') foo));"
+QUERIES=()
+QUERIES+=("insert into $SCHEMA.counts values (now(), 'highwaycount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, count(1) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));")
+QUERIES+=("insert into $SCHEMA.counts values (now(), 'highwaylength', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'highway' as t, sum(st_length(st_transform(linestring, 3786))) as c from ways where tags?'highway' and (linestring && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or linestring && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or linestring && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));")
+QUERIES+=("insert into $SCHEMA.counts values (now(), 'relationcount', (select hstore(array_agg(t::text),array_agg(c::text)) from (select tags->'network' t, count(1) c from relations where tags->'type' = 'route' and tags->'route' = 'road' and tags?'network' group by tags->'network') foo));")
+QUERIES+=("insert into $SCHEMA.counts values (now(), 'highwaynodecount', (select hstore(array_agg(t::text), array_agg(c::text)) from (select tags->'highway' as t, count(1) as c from nodes where tags?'highway' and (geom && Box2d(st_geomfromtext('linestring(-124.7625 24.5210, -66.9326 49.3845)')) or geom && Box2d(st_geomfromtext('linestring(-179.1506 51.2097, -129.9795 71.4410)')) or geom && Box2d(st_geomfromtext('linestring(-160.2471 18.9117, -154.8066 22.2356)'))) group by tags->'highway') foo));")
 echo "----------------------------------------------------------"
 echo "start: `date`"
-psql -U $POSTGRES_USER -d $DB -c "$HIGHWAY_COUNT_QUERY"
-psql -U $POSTGRES_USER -d $DB -c "$HIGHWAY_LENGTH_QUERY"
-psql -U $POSTGRES_USER -d $DB -c "$RELATION_COUNT_QUERY"
+for ((q = 0; q < ${#QUERIES[@]}; q++))
+do
+#    echo "${QUERIES[$q]}"
+    psql -U $POSTGRES_USER -d $DB -c "${QUERIES[$q]}"
+done
 echo "end: `date`"
 echo "----------------------------------------------------------"
